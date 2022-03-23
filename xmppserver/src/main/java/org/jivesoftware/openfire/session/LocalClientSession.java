@@ -984,14 +984,14 @@ public class LocalClientSession extends LocalSession implements ClientSession {
 
     @Override
     public void deliver(Packet packet) throws UnauthorizedException {
-        synchronized ( streamManager )
-        {
+        // synchronized ( streamManager )
+        // {
             if ( conn != null )
             {
                 conn.deliver(packet);
             }
             streamManager.sentStanza(packet);
-        }
+        // }
     }
 
     @Override
