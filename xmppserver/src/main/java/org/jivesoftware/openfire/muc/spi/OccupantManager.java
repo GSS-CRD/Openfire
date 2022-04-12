@@ -145,8 +145,8 @@ public class OccupantManager implements MUCEventListener
 
                 // Step 2: add new occupant, if there is any
                 if (newOccupant != null) {
-                    occupantsByNode.computeIfAbsent(nodeID, (n) -> new HashSet<>()).add(newOccupant);
-                    nodesByOccupant.computeIfAbsent(newOccupant, (n) -> new HashSet<>()).add(nodeID);
+                    occupantsByNode.computeIfAbsent(nodeID, (n) -> Collections.newSetFromMap(new ConcurrentHashMap<>())).add(newOccupant);
+                    nodesByOccupant.computeIfAbsent(newOccupant, (n) -> Collections.newSetFromMap(new ConcurrentHashMap<>())).add(nodeID);
                 }
 
                 Log.debug("Replaced occupant {} with {} for node {}", oldOccupant, newOccupant, nodeID);
