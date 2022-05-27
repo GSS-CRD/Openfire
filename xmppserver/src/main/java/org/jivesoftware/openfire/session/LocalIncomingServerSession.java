@@ -43,6 +43,7 @@ import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmpp.packet.JID;
 import org.xmpp.packet.Packet;
+import org.xmpp.packet.StreamError;
 
 /**
  * Server-to-server communication is done using two TCP connections between the servers. One
@@ -203,8 +204,8 @@ public class LocalIncomingServerSession extends LocalServerSession implements In
             return session;
         }
         catch (Exception e) {
-            Log.error("Error establishing connection from remote server:" + connection, e);
-            connection.close();
+            Log.error("Error establishing connection from remote server: {}", connection, e);
+            connection.close(new StreamError(StreamError.Condition.internal_server_error));
             return null;
         }
     }
