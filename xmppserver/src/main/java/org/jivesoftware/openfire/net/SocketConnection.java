@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2008 Jive Software, 2022 Ignite Realtime Foundation. All rights reserved.
+ * Copyright (C) 2005-2008 Jive Software. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,25 +16,6 @@
 
 package org.jivesoftware.openfire.net;
 
-import com.jcraft.jzlib.JZlib;
-import com.jcraft.jzlib.ZOutputStream;
-import org.jivesoftware.openfire.*;
-import org.jivesoftware.openfire.auth.UnauthorizedException;
-import org.jivesoftware.openfire.session.IncomingServerSession;
-import org.jivesoftware.openfire.session.LocalSession;
-import org.jivesoftware.openfire.session.Session;
-import org.jivesoftware.openfire.spi.ConnectionConfiguration;
-import org.jivesoftware.openfire.spi.ConnectionManagerImpl;
-import org.jivesoftware.openfire.spi.ConnectionType;
-import org.jivesoftware.util.JiveGlobals;
-import org.jivesoftware.util.LocaleUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.xmpp.packet.Packet;
-import org.xmpp.packet.StreamError;
-
-import javax.annotation.Nullable;
-import javax.net.ssl.SSLPeerUnverifiedException;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
@@ -51,6 +32,26 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+
+import javax.annotation.Nullable;
+import javax.net.ssl.SSLPeerUnverifiedException;
+
+import org.jivesoftware.openfire.*;
+import org.jivesoftware.openfire.auth.UnauthorizedException;
+import org.jivesoftware.openfire.session.IncomingServerSession;
+import org.jivesoftware.openfire.session.LocalSession;
+import org.jivesoftware.openfire.session.Session;
+import org.jivesoftware.openfire.spi.ConnectionConfiguration;
+import org.jivesoftware.openfire.spi.ConnectionManagerImpl;
+import org.jivesoftware.openfire.spi.ConnectionType;
+import org.jivesoftware.util.JiveGlobals;
+import org.jivesoftware.util.LocaleUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.xmpp.packet.Packet;
+
+import com.jcraft.jzlib.JZlib;
+import com.jcraft.jzlib.ZOutputStream;
 
 /**
  * An object to track the state of a XMPP client-server session.
@@ -247,8 +248,8 @@ public class SocketConnection implements Connection {
             writer.flush();
         }
         catch (Exception e) {
-            Log.warn("Closing no longer valid connection" + "\n" + this, e);
-            close(new StreamError(StreamError.Condition.internal_server_error, "An error occurred while trying to validate this connection."));
+            Log.warn("Closing no longer valid connection" + "\n" + this.toString(), e);
+            close();
         }
         finally {
             // Register that we finished sending data on the connection
@@ -468,7 +469,7 @@ public class SocketConnection implements Connection {
      * Closes the connection without sending any data (not even a stream end-tag).
      */
     public void forceClose() {
-        close(true, null);
+        close( true );
     }
 
     /**
@@ -476,17 +477,7 @@ public class SocketConnection implements Connection {
      */
     @Override
     public void close() {
-        close(false, null);
-    }
-
-    /**
-     * Closes the connection after trying to send an optional error and stream end tag.
-     *
-     * @param error If non-null, the end-stream tag will be preceded with this error.
-     */
-    @Override
-    public void close(@Nullable final StreamError error) {
-        close(false, error);
+        close( false );
     }
 
     /**
@@ -495,7 +486,7 @@ public class SocketConnection implements Connection {
      * when sending data over the socket has taken a long time and we need to close the socket, discard
      * the connection and its session.
      */
-    private void close(boolean force, @Nullable final StreamError error) {
+    private void close(boolean force) {
         if (state.compareAndSet(State.OPEN, State.CLOSED)) {
             
             if (session != null) {
@@ -509,14 +500,7 @@ public class SocketConnection implements Connection {
                     allowedToWrite = true;
                     // Register that we started sending data on the connection
                     writeStarted();
-
-                    String rawEndStream = "";
-                    if (error != null) {
-                        rawEndStream = error.toXML();
-                    }
-                    rawEndStream += "</stream:stream>";
-
-                    writer.write(rawEndStream);
+                    writer.write("</stream:stream>");
                     writer.flush();
                 }
                 catch (Exception e) {
@@ -538,7 +522,9 @@ public class SocketConnection implements Connection {
 
     @Override
     public void systemShutdown() {
-        close(new StreamError(StreamError.Condition.system_shutdown));
+        deliverRawText("<stream:error><system-shutdown " +
+                "xmlns='urn:ietf:params:xml:ns:xmpp-streams'/></stream:error>");
+        close();
     }
 
     void writeStarted() {
@@ -555,7 +541,7 @@ public class SocketConnection implements Connection {
      * not finished in a long time or when the client has not sent a heartbeat for a long time.
      * In any of both cases the socket will be closed.
      *
-     * @return true if the socket was closed due to a bad health.
+     * @return true if the socket was closed due to a bad health.s
      */
     boolean checkHealth() {
         // Check that the sending operation is still active

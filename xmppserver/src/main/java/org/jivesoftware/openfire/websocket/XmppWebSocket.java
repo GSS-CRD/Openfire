@@ -51,7 +51,6 @@ import org.slf4j.LoggerFactory;
 import org.xmpp.packet.PacketError;
 import org.xmpp.packet.StreamError;
 
-import javax.annotation.Nullable;
 import javax.xml.XMLConstants;
 
 /**
@@ -160,12 +159,8 @@ public class XmppWebSocket {
     }
 
     void closeSession() {
-        closeSession(null);
-    }
-
-    void closeSession(@Nullable final StreamError error) {
         if (isWebSocketOpen()) {
-            closeStream(error);
+            closeStream(null);
         }
         if (xmppSession != null) {
             if (!xmppSession.getStreamManager().getResume()) {
