@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2008 Jive Software, 2022 Ignite Realtime Foundation. All rights reserved.
+ * Copyright (C) 2005-2008 Jive Software. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,7 +40,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlPullParserFactory;
-import org.xmpp.packet.*;
+import org.xmpp.packet.IQ;
+import org.xmpp.packet.Message;
+import org.xmpp.packet.Packet;
+import org.xmpp.packet.Presence;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -969,7 +972,7 @@ public class HttpSession extends LocalClientSession {
         sentElements.add(delivered);
     }
 
-    private void closeSession(@Nullable final StreamError error) {
+    private void closeSession() {
         try {
             // There generally should not be a scenario where there are pending connections, as well as pending elements
             // to deliver, as when a new connection becomes available while there are pending elements, those will be
@@ -1077,24 +1080,6 @@ public class HttpSession extends LocalClientSession {
     }
 
     /**
-     * Creates an empty BOSH 'body' element that including a 'terminate' type attribute (that, in BOSH, signifies the
-     * end of a session), sets the 'condition' attribute to 'remote-stream-error' (to signal that an XMPP error is
-     * transported), and includes the error in the body.
-     *
-     * @param error The error to be included in the body.
-     * @return The string representation of a BOSH 'body' element.
-     */
-    @Nonnull
-    protected String createRemoteStreamErrorBody(@Nonnull final StreamError error)
-    {
-        final Element body = DocumentHelper.createElement( QName.get( "body", "http://jabber.org/protocol/httpbind" ) );
-        body.addAttribute("type", "terminate");
-        body.addAttribute("condition", "remote-stream-error");
-        body.add(error.getElement());
-        return body.asXML();
-    }
-
-    /**
      * Creets a BOSH 'body' element that represents a 'session restart' event, including the stream features that are
      * available to this session.
      *
@@ -1133,8 +1118,8 @@ public class HttpSession extends LocalClientSession {
         }
 
         @Override
-        public void closeVirtualConnection(@Nullable final StreamError error) {
-            ((HttpSession) session).closeSession(error);
+        public void closeVirtualConnection() {
+            ((HttpSession) session).closeSession();
         }
 
         @Override
@@ -1154,7 +1139,7 @@ public class HttpSession extends LocalClientSession {
 
         @Override
         public void systemShutdown() {
-            close(new StreamError(StreamError.Condition.system_shutdown));
+            close();
         }
 
         @Override
